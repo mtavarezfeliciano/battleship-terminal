@@ -41,6 +41,15 @@ class Ship {
         }
     }
 
+    getFormattedCoordinates() {
+        return this.coordinates.map(coord => {
+            const [x, y] = coord;
+            const letter = String.fromCharCode('A'.charCodeAt(0) + x);
+            const number = y + 1;
+            return `${letter}${number}`;
+        });
+    }
+
     receiveHit(attackCoordinate) {
         for (let i = 0; i < this.length; i++) {
             const [x, y] = this.coordinates[i];
@@ -57,90 +66,104 @@ class Ship {
     }
 }
 
-function placeRandomShips(gridSize, shipCount) {
-    const ships = [];
+function placeRandomShips(gridSize) {
+    const ships = [
+        new Ship("Ship1", 2),
+        new Ship("Ship2", 3),
+        new Ship("Ship3", 3),
+        new Ship("Ship4", 4),
+        new Ship("Ship5", 5)
+    ];
 
-    for (let i = 0; i < shipCount; i++) {
-        const ship = new Ship(`Ship${i + 1}`, 3);
-        ship.placeRandomly(gridSize);
-
-        const overlaps = ships.some(existingShip => {
-            return existingShip.coordinates.some(coord => {
-                return ship.coordinates.some(newCoord => newCoord[0] === coord[0] && newCoord[1] === coord[1]);
-            });
-        });
-
-        if (overlaps) {
-            i--;
-        } else {
-            ships.push(ship);
-        }
+    for (const ship of ships) {
+        do {
+            ship.placeRandomly(gridSize);
+        } while (ships.some(existingShip => existingShip !== ship && existingShip.coordinates.some(coord => {
+            return ship.coordinates.some(newCoord => newCoord[0] === coord[0] && newCoord[1] === coord[1]);
+        })));
     }
 
     return ships;
 }
 
-const mapGrid = makeGrid(10);
-const ships = placeRandomShips(mapGrid.length, 5);
+function printShipsLocations(ships) {
+    ships.forEach(ship => {
+        console.log(`${ship.name} is located at: ${ship.getFormattedCoordinates().map(coord => {
+            const [letter, number] = coord.match(/[A-J]|10|[1-9]/g);
+            return `${letter}${number}`;
+        }).join(', ')}`);
+    });
+}
 
-ships.forEach(ship => {
-    console.log(`${ship.name} is located at: ${ship.coordinates.map(coord => coord.join('')).join(', ')}`);
-});
+function playGame(ships) {
+    let remainingShips = ships.length;
 
-console.table(mapGrid);
-
-let remainingShips = ships.length;
-
-do {
-    function strikeShip() {
-        const shotsFired = [];
-
-        while (remainingShips > 0) {
-            let currentShot = readlineSync.question("Enter a location to strike (e.g., A1): ").toUpperCase();
-
-            if (shotsFired.includes(currentShot)) {
-                console.log("You have already picked this location. Miss!");
-            } else if (ships.some(ship => ship.coordinates.some(coord => coord.join('') === currentShot))) {
-                console.log("Hit. You have sunk a battleship.");
-                remainingShips--;
-            } else {
-                console.log("You have missed!");
-            }
-
-            shotsFired.push(currentShot);
-        }
-
-        remainingShips = remainingShips - 1;
-        if (remainingShips === 1) {
+    do {
+        function strikeShip() {
+            const shotsFired = [];
+        
             while (remainingShips > 0) {
                 let currentShot = readlineSync.question("Enter a location to strike (e.g., A1): ").toUpperCase();
-
+        
+                const validInput = /^[A-J]([1-9]|10)$/.test(currentShot);
+                if (!validInput) {
+                    console.log("Invalid input format. Please enter a valid location (e.g., A1).");
+                    continue;
+                }
+        
                 if (shotsFired.includes(currentShot)) {
                     console.log("You have already picked this location. Miss!");
-                } else if (ships.some(ship => ship.coordinates.some(coord => coord.join('') === currentShot))) {
-                    console.log("Hit. You have sunk a battleship.");
-                    remainingShips--;
                 } else {
-                    console.log("You have missed!");
+                    let hitShip = false;
+        
+                    for (const ship of ships) {
+                        if (ship.getFormattedCoordinates().includes(currentShot)) {
+                            console.log("Hit!");
+        
+                            const hitIndex = ship.getFormattedCoordinates().indexOf(currentShot);
+                            ship.hits[hitIndex] = true;
+        
+                            if (ship.isSunk()) {
+                                console.log("Sunk! You have sunk a battleship.");
+                                remainingShips--;
+                            }
+        
+                            hitShip = true;
+                            break;
+                        }
+                    }
+        
+                    if (!hitShip) {
+                        console.log("You have missed!");
+                    }
+        
+                    shotsFired.push(currentShot);
                 }
-
-                shotsFired.push(currentShot);
             }
+        
+            remainingShips = remainingShips - 1;
         }
-        remainingShips = remainingShips - 1;
-    }
-    strikeShip();
+            
+        strikeShip();
 
-    const restart = readlineSync.keyInYNStrict(
-        "You have destroyed all battleships. Would you like to play again?"
-    );
+    } while (remainingShips > 0);
 
-    if (restart) {
-        ({ ship1, ship2, remainingShips } = restartGame());
-        console.log("Aight lets rock.");
-    } else {
-        console.log("gg no re.");
-        break;
-    }
-} while (true);
-console.log(placeShip);
+    const playAgain = readlineSync.keyInYNStrict("You have sunk all battleships. Would you like to play again?");
+    return playAgain;
+}
+
+let playAgain = true;
+
+do {
+    const mapGrid = makeGrid(10);
+    const ships = placeRandomShips(mapGrid.length);
+
+    printShipsLocations(ships);
+
+    console.table(mapGrid);
+
+    playAgain = playGame(ships);
+
+} while (playAgain);
+
+console.log("gg no re");

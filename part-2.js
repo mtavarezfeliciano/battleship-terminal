@@ -1,169 +1,158 @@
-const readlineSync = require("readline-sync");
+const required = require("readline-sync");
 
-function makeGrid(size) {
-    const gameGrid = [];
-    for (let i = 0; i < size; i++) {
-        const rows = [];
-        for (let x = 0; x < size; x++) {
-            rows.push(' ');
-        }
-        gameGrid.push(rows);
-    }
-    return gameGrid;
+const letters = 'abcdefghij'.toUpperCase().split('');
+
+let fleet = [];
+
+const grid = letters.map((letter) => {
+    return letters.map((_, index) => {
+      return `${letter}${index +1}`
+    })
+  })
+
+
+  //stuff for ship generation.
+const getRandomInt = (max) => {
+    return Math.floor(Math.random() * max);
 }
 
-class Ship {
-    constructor(name, length) {
-        this.name = name;
-        this.length = length;
-        this.coordinates = [];
-        this.hits = new Array(length).fill(false);
-    }
-
-    placeRandomly(gridSize) {
-        const isVertical = Math.random() < 0.5;
-        const startingCoordinate = [
-            Math.floor(Math.random() * gridSize),
-            Math.floor(Math.random() * gridSize)
-        ];
-
-        this.placeShip(startingCoordinate, isVertical);
-    }
-
-    placeShip(startingCoordinate, isVertical) {
-        this.coordinates = [];
-
-        for (let i = 0; i < this.length; i++) {
-            const [x, y] = isVertical
-                ? [startingCoordinate[0] + i, startingCoordinate[1]]
-                : [startingCoordinate[0], startingCoordinate[1] + i];
-            this.coordinates.push([x, y]);
-        }
-    }
-
-    getFormattedCoordinates() {
-        return this.coordinates.map(coord => {
-            const [x, y] = coord;
-            const letter = String.fromCharCode('A'.charCodeAt(0) + x);
-            const number = y + 1;
-            return `${letter}${number}`;
-        });
-    }
-
-    receiveHit(attackCoordinate) {
-        for (let i = 0; i < this.length; i++) {
-            const [x, y] = this.coordinates[i];
-            if (x === attackCoordinate[0] && y === attackCoordinate[1]) {
-                this.hits[i] = true;
-                return true;
+const checkCollision = (fleet, newCoords) => {
+    for (const shipCoords of fleet) {
+        for (const coord of newCoords) {
+            if (shipCoords.includes(coord)) {
+                return true; 
             }
         }
-        return false;
     }
+    return false;
+}
+ // the actual generation function
+const placeShips = (letters, units, fleet) => {
+    const letterIndex = getRandomInt(letters.length);
+    const number = getRandomInt(letters.length);
+    const direction = getRandomInt(2); 
+    const coordsArr = [];
 
-    isSunk() {
-        return this.hits.every(hit => hit);
+    if (direction === 0) { //horizontal
+        if (number + units <= letters.length) {
+            for (let i = 0; i < units; i++) {
+                coordsArr.push(`${letters[letterIndex]}${number + 1 + i}`);
+            }
+        } else {
+            return placeShips(letters, units, fleet);
+        }
+    } else {  //vertical
+        if (letterIndex + units <= letters.length) {
+            for (let i = 0; i < units; i++) {
+                coordsArr.push(`${letters[letterIndex + i]}${number + 1}`);
+            }
+        } else {
+            return placeShips(letters, units, fleet);
+        }
+    } //collision 
+    if (checkCollision(fleet, coordsArr)) {
+        return placeShips(letters, units, fleet); 
     }
+    return coordsArr;
 }
 
-function placeRandomShips(gridSize) {
-    const ships = [
-        new Ship("Ship1", 2),
-        new Ship("Ship2", 3),
-        new Ship("Ship3", 3),
-        new Ship("Ship4", 4),
-        new Ship("Ship5", 5)
-    ];
 
-    for (const ship of ships) {
-        do {
-            ship.placeRandomly(gridSize);
-        } while (ships.some(existingShip => existingShip !== ship && existingShip.coordinates.some(coord => {
-            return ship.coordinates.some(newCoord => newCoord[0] === coord[0] && newCoord[1] === coord[1]);
-        })));
-    }
-
-    return ships;
-}
-
-function printShipsLocations(ships) {
-    ships.forEach(ship => {
-        console.log(`${ship.name} is located at: ${ship.getFormattedCoordinates().map(coord => {
-            const [letter, number] = coord.match(/[A-J]|10|[1-9]/g);
-            return `${letter}${number}`;
-        }).join(', ')}`);
+function resetGame() {
+    fleet = [];
+    fleet = [2, 3, 3, 4, 5].map((unitsNumber, index) => {
+        return placeShips(letters, unitsNumber, fleet.slice(0, index));
     });
+
+    return fleet;
 }
 
-function playGame(ships) {
-    let remainingShips = ships.length;
+//okay now the actual game
+function startGame() {
+    console.log("Press any key to start the game.");
+    required.keyInPause();
+    let fleet = resetGame();
+    console.log('For the sake of testing, this is the fleet location:');
+}
+startGame();
+    console.log(fleet);    
+
+
+
+
+function playGame() {
+
+    let remainingShips = fleet.length;
+    // console.log(remainingShips) //prints 5
+    let newRemainder;
+    for (let index = 0; index < fleet.length; index++) {
+        newRemainder = fleet[index].length;
+        // console.log(newRemainder); // prints 2, 3, 3, 4, 5
+    }
 
     do {
+
         function strikeShip() {
             const shotsFired = [];
-        
-            while (remainingShips > 0) {
-                let currentShot = readlineSync.question("Enter a location to strike (e.g., A1): ").toUpperCase();
-        
+
+            while ( remainingShips > 0 ) {
+                let currentShot = required.question('Enter a location to strike (i.e A1): ').toUpperCase();
+
                 const validInput = /^[A-J]([1-9]|10)$/.test(currentShot);
-                if (!validInput) {
-                    console.log("Invalid input format. Please enter a valid location (e.g., A1).");
+                if(!validInput) {
+                    console.log('Invalid coordinate. Please enter a valid location (i.e B5): ');
                     continue;
                 }
-        
+
                 if (shotsFired.includes(currentShot)) {
-                    console.log("You have already picked this location. Miss!");
+                    console.log('You have already picked this location! Miss! ');
                 } else {
                     let hitShip = false;
+
+                    for (let i = 0; i < fleet.length; i++) {
+                        const ship = fleet[i];
+                        const indexOfShot = ship.indexOf(currentShot);
         
-                    for (const ship of ships) {
-                        if (ship.getFormattedCoordinates().includes(currentShot)) {
-                            console.log("Hit!");
-        
-                            const hitIndex = ship.getFormattedCoordinates().indexOf(currentShot);
-                            ship.hits[hitIndex] = true;
-        
-                            if (ship.isSunk()) {
-                                console.log("Sunk! You have sunk a battleship.");
+                        if (indexOfShot !== -1) {
+                            console.log('Hit!');
+                            ship.splice(indexOfShot, 1);
+
+                            if (ship.length === 0) {
+                                console.log('Sunk! You have sunk a battleship.');
                                 remainingShips--;
                             }
-        
+
                             hitShip = true;
                             break;
                         }
                     }
-        
+
                     if (!hitShip) {
-                        console.log("You have missed!");
+                        console.log('You have missed!');
                     }
-        
+
                     shotsFired.push(currentShot);
                 }
             }
-        
-            remainingShips = remainingShips - 1;
         }
-            
         strikeShip();
-
+        
     } while (remainingShips > 0);
 
-    const playAgain = readlineSync.keyInYNStrict("You have sunk all battleships. Would you like to play again?");
-    return playAgain;
+    const playAgain = required.keyInYNStrict('You have sunk all battleships. Would you like to play again? ');
+    if (playAgain) {
+        fleet = resetGame();  // Reset the fleet for a new game
+        return true;
+    } else {
+        return false;
+    }
 }
+
+
 
 let playAgain = true;
 
 do {
-    const mapGrid = makeGrid(10);
-    const ships = placeRandomShips(mapGrid.length);
-
-    printShipsLocations(ships);
-
-    console.table(mapGrid);
-
-    playAgain = playGame(ships);
-
+    playAgain = playGame();
 } while (playAgain);
 
-console.log("gg no re");
+console.log('gg no re.');

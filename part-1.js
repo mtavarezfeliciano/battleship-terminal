@@ -12,7 +12,6 @@ const grid = letters.map((letter) => {
 
 let ships;
 let remainingShips;
-const shotsFired = [];
 
 
 //random ship thingy (my brain hurts)
@@ -52,11 +51,13 @@ function startGame() {
 
 function restartGame() {
   startGame();
-  return { ships: [], remainingShips: 2 };
+  return { ships: [], remainingShips: 2, shotsFired: []};
 }
 
 
 function strikeShip() {
+  let shotsFired = [];
+
   while (remainingShips > 0) {
     let currentShot = required.question("Enter a location to strike: ", {
       limit: grid,
@@ -83,7 +84,7 @@ const restartNewGame = () => {
   );
   
   if (restart) {
-    ({ ships, remainingShips } = restartGame());
+    ({ ships, remainingShips, shotsFired } = restartGame());
     console.log("Aight lets rock.");
     return true;
   } else {
@@ -91,6 +92,7 @@ const restartNewGame = () => {
     return false;
   }
 }
+startGame();
 
 function handleGame() {
   do {
@@ -102,4 +104,3 @@ function handleGame() {
   
 }
 
-startGame();

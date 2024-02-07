@@ -16,16 +16,7 @@ const getRandomInt = (max) => {
     return Math.floor(Math.random() * max);
 }
 
-const checkCollision = (fleet, newCoords) => {
-    for (const shipCoords of fleet) {
-        for (const coord of newCoords) {
-            if (shipCoords.includes(coord)) {
-                return true; 
-            }
-        }
-    }
-    return false;
-}
+
  // the actual generation function
 const placeShips = (letters, units, fleet) => {
     const letterIndex = getRandomInt(letters.length);
@@ -33,6 +24,7 @@ const placeShips = (letters, units, fleet) => {
     const direction = getRandomInt(2); 
     const coordsArr = [];
 
+    
     if (direction === 0) { //horizontal
         if (number + units <= letters.length) {
             for (let i = 0; i < units; i++) {
@@ -59,12 +51,29 @@ const placeShips = (letters, units, fleet) => {
 
 function resetGame() {
     fleet = [];
-    fleet = [2, 3, 3, 4, 5].map((unitsNumber, index) => {
-        return placeShips(letters, unitsNumber, fleet.slice(0, index));
-    });
+
+    for (let index = 0; index < [2, 3, 3, 4, 5].length; index++) {
+        const unitsNumber = [2, 3, 3, 4, 5][index];
+        fleet.push(placeShips(letters, unitsNumber, fleet.slice(0, index)));
+    }
 
     return fleet;
 }
+
+
+const checkCollision = (fleet, newCoords) => {
+    // console.log(fleet);
+    for (const shipCoords of fleet) {
+        for (const coord of newCoords) {
+            if (shipCoords.includes(coord)) {
+                return true; 
+            }
+        }
+    }
+    return false;
+}
+
+
 
 //okay now the actual game
 function startGame() {
@@ -72,14 +81,15 @@ function startGame() {
     required.keyInPause();
     let fleet = resetGame();
     console.log('For the sake of testing, this is the fleet location:');
+    // console.log(fleet);    
 }
 startGame();
-    console.log(fleet);    
 
 
 
 
 function playGame() {
+    console.log(fleet);    
 
     let remainingShips = fleet.length;
     // console.log(remainingShips) //prints 5
